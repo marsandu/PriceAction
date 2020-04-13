@@ -1,0 +1,6 @@
+GAP Exception is taken care in CLASS RANGE (should be named differently)
+
+ZONE is calculated also in CLASS RANGE (since we have to iterate over the candles)
+	CURRENT PRICE (How are we going to get Current Price, since there is no Close yet)
+	CURRENT LOW
+	CURRENT HIGH
