@@ -456,9 +456,9 @@ class Engine():
                         df = parseCSV(str(self.ticker) + '.csv')
                     except FileNotFoundError as e:
                         logger.info('Could not load data.')
-                        logger.info('File {} was not found in current directory, exiting..')
+                        logger.info('File {} was not found in current directory, exiting..'.format(self.ticker + '.csv'))
                         exit()
-                        
+
                     time.sleep(0.3)
                     logger.info('\t+ DataFrame loaded')
                     time.sleep(0.1)
