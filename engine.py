@@ -3,7 +3,7 @@ from    datetime                import  datetime    , timedelta
 from    dateutil.relativedelta  import  relativedelta
 
 import saltools.misc    as      sltm
-import saltools.logging as      sltl
+import logging
 import pandas           as      pd
 import numpy            as      np
 import traceback, re
@@ -119,9 +119,9 @@ class Candle():
 # Candle List is importd here to calculate area-specific parameters
 class Area():
 
-    def __init__(self, clist, params, logger):
+    def __init__(self, clist, params, logging):
 
-        self.logger = logger
+        self.logging = logging
         self.params = params
         self.lowNow  = clist[0].low
         self.highNow = clist[0].high
@@ -148,7 +148,7 @@ class Area():
             except IndexError as e:
                 # Reached EOF: Next candle after this one is EOF
                 clist[i].getSpecs()
-                logger.info(" End of {}-candle DataFrame, last date is {}\n".format(i, clist[i].date))
+                logging.info("\t+ End of {}-candle DataFrame, last date is {}\n".format(i, clist[i].date))
 
 
     def __del__(self):
@@ -400,6 +400,9 @@ class Engine():
     
     def __init__(self, **kwargs):
 
+        logging.basicConfig(level=0, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.getLogger('Application Logger').setLevel(logging.INFO)
+
         # Receives input parameters from GUI 
         # kwargs['ticker'] would be 'APPL' for example
         #for k in kwargs :
@@ -446,134 +449,133 @@ class Engine():
         if self.s_date == '':
             self.s_date = datetime.utcnow()
         
-        with sltl.ConsoleLogger() as logger:
-            try:
-                for pair in pairs: # for each ticker in list pairs
-                    logger.info({'Parsing DataFrame': pair})
+        try:
+            for pair in pairs: # for each ticker in list pairs
+                logging.info({'Parsing DataFrame': pair})
 
-                    # Get Data from CSV or DB
-                    try:
-                        df = parseCSV(str(self.ticker) + '.csv')
-                    except FileNotFoundError as e:
-                        logger.info('Could not load data.')
-                        logger.info('File {} was not found in current directory, exiting..'.format(self.ticker + '.csv'))
-                        exit()
+                # Get Data from CSV or DB
+                try:
+                    df = parseCSV(str(self.ticker) + '.csv')
+                except FileNotFoundError as e:
+                    logging.info('Could not load data.')
+                    logging.info('File {} was not found in current directory, exiting..'.format(self.ticker + '.csv'))
+                    exit()
 
-                    time.sleep(0.3)
-                    logger.info('\t+ DataFrame loaded')
-                    time.sleep(0.1)
-
-
-                    for row in df.iterrows():
-                        cl  = Candle(row, self.htf_params)    # Import each row of DF as a new Candle item  
-                        clist.append(cl)    # Add each new Candle to a list
+                time.sleep(0.3)
+                logging.info('\t+ DataFrame loaded')
+                time.sleep(0.1)
 
 
-                    ##  HTF  SCAN  ##
-                    ##             ##
-                    HTF = Area(clist, self.htf_params, logger)
-                    logger.info('{} scan HTF..'.format(self.direction))
-                    TradingZone = HTF.findTradingZone(self.direction)
-                    
-                    if TradingZone:
-                        logger.info("\t+ Found Trading Zone ")
-                        if self.direction == 'Long':
-                            logger.info("\t  Demand Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
-                            DZTop = TradingZone[3]
-                            Now = TradingZone[4]
-                        elif self.direction == 'Short':
-                            logger.info("\t  Supply Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
-                            SZBot = TradingZone[2]
-                            Now = TradingZone[4]
-                    else:
-                        logger.info("\t+ No Trading Zone found..")
-
-                    OpposingZone = HTF.findOpposingZone(self.direction)
-                    
-                    if OpposingZone: # If we find Opposing Zone
-                        logger.info("\t+ Found Opposing Zone ")
-                        if self.direction == 'Long':
-                            logger.info("\t  Supply Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
-                            SZBot = OpposingZone[2]
-                            Now = TradingZone[4]
-                        elif self.direction == 'Short':
-                            logger.info("\t  Demand Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
-                            DZTop = OpposingZone[3]
-                            Now = TradingZone[4]
-                    else: # If we dont find Opposing Zone look for ATH/ATL
-                        logger.info(" No Opposing Zone found.")
-                        logger.info("\t+ Now scanning for All-time High/Low..")
-                        if self.direction == 'Long':
-                            SZBot = None
-                            ATH = HTF.findAT(self.direction) # SZBot
-                            logger.info("\t+ Found all-time High " + str(ATH))
-
-                        elif self.direction == 'Short':
-                            DZTop = None
-                            ATL = HTF.findAT(self.direction) # DZTop
-                            logger.info("\t+ Found all-time Low " + str(ATL))
-                    ##              ##
-                    ##   ## ## ##   ##
+                for row in df.iterrows():
+                    cl  = Candle(row, self.htf_params)    # Import each row of DF as a new Candle item  
+                    clist.append(cl)    # Add each new Candle to a list
 
 
-                    ##  HTF SCORING  ##
-                    ##               ##
+                ##  HTF  SCAN  ##
+                ##             ##
+                HTF = Area(clist, self.htf_params, logging)
+                logging.info('{} scan HTF..'.format(self.direction))
+                TradingZone = HTF.findTradingZone(self.direction)
+                
+                if TradingZone:
+                    logging.info("\t+ Found Trading Zone ")
                     if self.direction == 'Long':
-                        if SZBot and DZTop: # If we have proper Oppossing Zone
-                            ATH = None
-                            curve = {}
-                            for i in range(1,6):
-                                curve[i] = (i*(SZBot - DZTop)/5) + DZTop
+                        logging.info("\t+ Demand Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
+                        DZTop = TradingZone[3]
+                        Now = TradingZone[4]
+                    elif self.direction == 'Short':
+                        logging.info("\t+ Supply Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
+                        SZBot = TradingZone[2]
+                        Now = TradingZone[4]
+                else:
+                    logging.info("\t+ No Trading Zone found..")
 
-                            for i in range(1,6):
-                                if Now < curve[i]:
-                                    if i == 1:
-                                        logger.info("Current price is Very Low on the curve.  Score = 2")
-                                        score = 2
-                                    elif i == 2:
-                                        logger.info("Current price is Low on the curve. Score = 1")
-                                        score = 1
-                        elif DZTop and ATH: # If Opposing Zone is ATH/ATL
-                            score = 0
-
-                        logger.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n   AT Hi     {}".format(Now, SZBot, DZTop, score, ATH))
+                OpposingZone = HTF.findOpposingZone(self.direction)
+                
+                if OpposingZone: # If we find Opposing Zone
+                    logging.info("\t+ Found Opposing Zone ")
+                    if self.direction == 'Long':
+                        logging.info("\t+ Supply Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
+                        SZBot = OpposingZone[2]
+                        Now = TradingZone[4]
+                    elif self.direction == 'Short':
+                        logging.info("\t+ Demand Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
+                        DZTop = OpposingZone[3]
+                        Now = TradingZone[4]
+                else: # If we dont find Opposing Zone look for ATH/ATL
+                    logging.info(" No Opposing Zone found.")
+                    logging.info("\t+ Now scanning for All-time High/Low..")
+                    if self.direction == 'Long':
+                        SZBot = None
+                        ATH = HTF.findAT(self.direction) # SZBot
+                        logging.info("\t+ Found all-time High " + str(ATH))
 
                     elif self.direction == 'Short':
-                        if SZBot and DZTop: # If we have proper Oppossing Zone
-                            ATL = None
-                            curve = {}
-                            for i in range(1,6):
-                                curve[i] = (i*(SZBot - DZTop)/5) + DZTop
-
-                            for i in range(1,6):
-                                if Now < curve[i]:
-                                    if i == 5:
-                                        logger.info("Current price is Very High on the curve.  Score = 2")
-                                        score = 2
-                                    elif i == 4:
-                                        logger.info("Current price is High on the curve. Score = 1")
-                                        score = 1
-
-                        elif SZBot and ATL: # If Opposing Zone is ATH/ATL
-                            score = 0
-
-                        logger.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n   AT Lo     {}".format(Now, SZBot, DZTop, score, ATL))
-
-                    ##              ##
-                    ##   ## ## ##   ##
+                        DZTop = None
+                        ATL = HTF.findAT(self.direction) # DZTop
+                        logging.info("\t+ Found all-time Low " + str(ATL))
+                ##              ##
+                ##   ## ## ##   ##
 
 
-                    
+                ##  HTF SCORING  ##
+                ##               ##
+                if self.direction == 'Long':
+                    if SZBot and DZTop: # If we have proper Oppossing Zone
+                        ATH = None
+                        curve = {}
+                        for i in range(1,6):
+                            curve[i] = (i*(SZBot - DZTop)/5) + DZTop
 
-                    # Dereference all Candles and Ranges with __del__
-                    # Go To ITF..
-            except KeyboardInterrupt:
-                raise(KeyboardInterrupt)
-            except Exception as e:
-                print(e)
-                traceback.print_exc()
-                pass
-            
+                        for i in range(1,6):
+                            if Now < curve[i]:
+                                if i == 1:
+                                    logging.info("Current price is Very Low on the curve.  Score = 2")
+                                    score = 2
+                                elif i == 2:
+                                    logging.info("Current price is Low on the curve. Score = 1")
+                                    score = 1
+                    elif DZTop and ATH: # If Opposing Zone is ATH/ATL
+                        score = 0
+
+                    logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n   AT Hi     {}".format(Now, SZBot, DZTop, score, ATH))
+
+                elif self.direction == 'Short':
+                    if SZBot and DZTop: # If we have proper Oppossing Zone
+                        ATL = None
+                        curve = {}
+                        for i in range(1,6):
+                            curve[i] = (i*(SZBot - DZTop)/5) + DZTop
+
+                        for i in range(1,6):
+                            if Now < curve[i]:
+                                if i == 5:
+                                    logging.info("Current price is Very High on the curve.  Score = 2")
+                                    score = 2
+                                elif i == 4:
+                                    logging.info("Current price is High on the curve. Score = 1")
+                                    score = 1
+
+                    elif SZBot and ATL: # If Opposing Zone is ATH/ATL
+                        score = 0
+
+                    logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n   AT Lo     {}".format(Now, SZBot, DZTop, score, ATL))
+
+                ##              ##
+                ##   ## ## ##   ##
+
+
+                
+
+                # Dereference all Candles and Ranges with __del__
+                # Go To ITF..
+        except KeyboardInterrupt:
+            raise(KeyboardInterrupt)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            pass
+        
         return results
 
 
