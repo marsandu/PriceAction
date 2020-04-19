@@ -137,13 +137,14 @@ class Area():
         return bodies[X-1]
 
 
-    def scanCircle(self, direction):
+    def scanCircle(self, direction, start):
 
         Now = self.clist[0]
         Lowest = self.lowNow
         Highest = self.highNow
 
-        for i in range(0, len(self.clist)-1):
+        for i in range(start, len(self.clist)-1):
+
 
             Lowest = min(Lowest, self.clist[i].low)
             Highest = max(Highest, self.clist[i].high)
@@ -262,24 +263,64 @@ class Area():
 
         try:
             if ZoneBot and ZoneTop:
-                return self.clist[i+1].date, self.clist[i+pattern_end].date, ZoneBot, ZoneTop, Now.close
+                return self.clist[i+1].date, self.clist[i+pattern_end].date, ZoneBot, ZoneTop, Now.close, i+pattern_end
         except:
             return None
 
 
     def HTFfindTradingZone(self, direction):
-        return self.scanCircle(direction)
+
+        result = self.scanCircle(direction, 0)
+        if result != None:
+            return result[:-1]
 
 
     def HTFfindOpposingZone(self, direction):
+
         if direction == 'Long': direction = 'Short'
         elif direction == 'Short': direction  = 'Long'
 
-        return self.scanCircle(direction)
+        result = self.scanCircle(direction, 0)
+        if result != None:
+            return result[:-1]
 
-    #def LTFfindTradingZone(self, direction):
-    #    print(self.scanCircle)
 
+    def LTFfindTradingZone(self, direction):
+        
+        result = self.scanCircle(direction, 0)
+        #print(x[5])
+        if result != None:
+            result2 = self.scanCircle(direction, result[5])
+            result = result[:-1] 
+
+            if result2 != None:
+                result2 = result2[:-1]
+                #print("ONE AND TWO ", result + result2)
+                return result + result2
+            else:
+                #print("JUST ONE ", result)
+                return result
+
+
+    def LTFfindOpposingZone(self, direction):
+
+        if direction == 'Long': direction = 'Short'
+        elif direction == 'Short': direction  = 'Long'
+
+        result = self.scanCircle(direction, 0)
+        #print(x[5])
+        if result != None:
+            result2 = self.scanCircle(direction, result[5])
+            result = result[:-1] 
+
+            if result2 != None:
+                result2 = result2[:-1]
+                print("ONE AND TWO ", result + result2)
+                return result + result2
+            else:
+                print("JUST ONE ", result)
+                return result
+        
 
     def findAT(self, direction):
         Highest = self.highNow
@@ -490,6 +531,7 @@ class Engine():
                 ##              ##
                 ##   ## ## ##   ##
 
+                #print(HTF.LTFfindTradingZone('Long'))
 
                 ##  HTF SCORING  ##
                 ##               ##
