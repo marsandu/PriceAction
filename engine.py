@@ -262,7 +262,7 @@ class Area():
 
         try:
             if ZoneBot and ZoneTop:
-                return self.clist[i+1].date, self.clist[i+3].date, ZoneBot, ZoneTop, Now.close
+                return self.clist[i+1].date, self.clist[i+pattern_end].date, ZoneBot, ZoneTop, Now.close
         except:
             return None
 
