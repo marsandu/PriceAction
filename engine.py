@@ -34,7 +34,6 @@ DIRECTIONS  = [
 
 def parseCSV(file):
     data = pd.read_csv(file) 
-    #print(data)
     return data
 
 
@@ -87,32 +86,6 @@ class Candle():
         self.bodywithgap     = abs(self.open - self.close) + self.DZgap + self.SZgap
         self.bodywithgap2r   = self.bodywithgap / self.range
         
-        # Debug
-        #print("End2 open ", self.open)
-        #print("End2 close ", self.close)
-        #print("BodywithGap ", self.bodywithgap)
-        #print("RangeHL ", self.range)
-        #print("BodywithGapRatio ", self.bodywithgap2r)
-        # Debug
-
-        # Quickly check if Leg or Base or Normal  
-        # We need to delete that because soem candles do not seem
-        # like a leg  until we have calculated the gap   
-       
-        #if self.bodywithgap2r  >= min(float(self.params['liDZr']), float(self.params['loDZr']), float(self.params['liSZr']), float(self.params['loSZr'])):
-        #    self.type = 'leg'
-        
-        #elif self.bodywithgap2r <= max(float(self.params['bDZr']), float(self.params['bSZr'])):
-        #    self.type = 'base'
-        
-        #else: self.type = 'norm'
-
-
-    def getAll(self):
-        #print(self.DZgap)
-        #print(self.SZgap)
-        return self.date, self.open, self.close, self.high, self.low, self.volume
-    
 
 
 # The area of tickers (GUI 5) we are looking at
@@ -152,7 +125,6 @@ class Area():
 
 
     def __del__(self):
-        # Free up memory
         pass
 
 
@@ -165,14 +137,11 @@ class Area():
         return bodies[X-1]
 
 
-    def findTradingZone(self, direction):
+    def scanCircle(self, direction):
+
         Now = self.clist[0]
         Lowest = self.lowNow
         Highest = self.highNow
-        
-        # Debug
-        #print(self.clist[199].getAll())
-        # Debug
 
         for i in range(0, len(self.clist)-1):
 
@@ -180,8 +149,6 @@ class Area():
             Highest = max(Highest, self.clist[i].high)
 
             # STEP 1
-            #print("Lowest: ", Lowest)
-            #print(self.topX(int(self.params['loX'])))
             if direction == 'Long':
                 if self.clist[i+1].open < self.lowNow and self.clist[i+1].open < Lowest and self.clist[i+1].color == 'green' and self.clist[i+1].body >= self.topX(int(self.params['loX'])):
                     # Debug
@@ -197,16 +164,14 @@ class Area():
                     # if its a leg-out indeed proceed
                     if self.clist[i+1].bodywithgap2r  >= float(self.params['loDZr']):
                         
-                        # Valid Leg-out candles
                         # STEP 2
                         if self.clist[i+2].b2r <= float(self.params['bDZr']):
-                            #print("Second BASE")
                             
                             # STEP 3
                             if self.clist[i+3].bodywithgap2r >= float(self.params['liDZr']):
                                 ZoneTop = self.clist[i+2].open
                                 ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low)
-                                return self.clist[i+1].date, self.clist[i+3].date, ZoneBot, ZoneTop, Now.close
+                                break
 
                             elif self.clist[i+3].b2r <= float(self.params['bDZr']):
                                 
@@ -214,7 +179,7 @@ class Area():
                                 if self.clist[i+4].bodywithgap2r >= float(self.params['liDZr']):
                                     ZoneTop = max(self.clist[i+2].open, self.clist[i+3].open)
                                     ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low, self.clist[i+3].low)
-                                    return self.clist[i+1].date, self.clist[i+4].date, ZoneBot, ZoneTop, Now.close
+                                    break
 
                                 elif self.clist[i+4].b2r <= float(self.params['bDZr']):
 
@@ -222,7 +187,7 @@ class Area():
                                     if self.clist[i+5].bodywithgap2r >= float(self.params['liDZr']):
                                         ZoneTop = max(self.clist[i+2].open, self.clist[i+3].open, self.clist[i+4].open)
                                         ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low, self.clist[i+3].low, self.clist[i+4].low)
-                                        return self.clist[i+1].date, self.clist[i+5].date, ZoneBot, ZoneTop, Now.close
+                                        break
                                     else:
                                         continue
 
@@ -234,8 +199,8 @@ class Area():
 
                         else:
                             continue
-                        #???#
-                        pass
+
+
 
             elif direction == 'Short':
                 if self.clist[i+1].open > self.highNow and self.clist[i+1].open > Highest and self.clist[i+1].color == 'red' and self.clist[i+1].body >= self.topX(int(self.params['loX'])):
@@ -251,17 +216,15 @@ class Area():
                     # Possible Leg-out check further
                     # if its a leg-out indeed proceed
                     if self.clist[i+1].bodywithgap2r  >= float(self.params['loSZr']):
-
-                        # Valid Leg-out candles 
+                        
                         # STEP 2
                         if self.clist[i+2].b2r <= float(self.params['bSZr']):
-                            #print("Second BASE")
 
                             # STEP 3
                             if self.clist[i+3].bodywithgap2r >= float(self.params['liSZr']):
                                 ZoneBot = self.clist[i+2].close
                                 ZoneTop = max(self.clist[i+1].high, self.clist[i+2].high)
-                                return self.clist[i+1].date, self.clist[i+3].date, ZoneBot, ZoneTop, Now.close 
+                                break
 
                             elif self.clist[i+3].b2r <= float(self.params['bSZr']):
                                 
@@ -269,7 +232,7 @@ class Area():
                                 if self.clist[i+4].bodywithgap2r >= float(self.params['liSZr']):
                                     ZoneBot = min(self.clist[i+2].close, self.clist[i+3].close)
                                     ZoneTop = min(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high)
-                                    return self.clist[i+1].date, self.clist[i+4].date, ZoneBot, ZoneTop, Now.close
+                                    break
 
                                 elif self.clist[i+4].b2r <= float(self.params['bSZr']):
 
@@ -277,7 +240,7 @@ class Area():
                                     if self.clist[i+5].bodywithgap2r >= float(self.params['liSZr']):
                                         ZoneBot = min(self.clist[i+2].close, self.clist[i+3].close, self.clist[i+4].close)
                                         ZoneTop = min(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high, self.clist[i+4].high)
-                                        return self.clist[i+1].date, self.clist[i+5].date, ZoneBot, ZoneTop, Now.close
+                                        break
                                     else:
                                         continue
 
@@ -289,17 +252,27 @@ class Area():
 
                         else:
                             continue
-                        #???#
-                        pass
 
 
-    def findOpposingZone(self, direction):
-        if direction == 'Long':
-            direction = 'Short'
-        elif direction == 'Short':
-            direction  = 'Long'
+        try:
+            if ZoneBot and ZoneTop:
+                return self.clist[i+1].date, self.clist[i+3].date, ZoneBot, ZoneTop, Now.close
+        except:
+            return None
 
-        return self.findTradingZone(direction)
+
+    def HTFfindTradingZone(self, direction):
+        return self.scanCircle(direction)
+
+
+    def HTFfindOpposingZone(self, direction):
+        if direction == 'Long': direction = 'Short'
+        elif direction == 'Short': direction  = 'Long'
+
+        return self.scanCircle(direction)
+
+    #def LTFfindTradingZone(self, direction):
+    #    print(self.scanCircle)
 
 
     def findAT(self, direction):
@@ -432,12 +405,6 @@ class Engine():
             #print(kwargs[k])
         # Debug
 
-        #self.htf_table = g_htf_table(self.time_frame)
-        #print(self.htf_table)
-        #self.itf_table = g_itf_table(self.time_frame)
-        #print(self.itf_table)
-        #self.ltf_table = g_ltf_table(self.time_frame)
-        #print(self.ltf_table)
 
     def run (self):
         results = {}
@@ -475,7 +442,7 @@ class Engine():
                 ##             ##
                 HTF = Area(clist, self.htf_params, logging)
                 logging.info('{} scan HTF..'.format(self.direction))
-                TradingZone = HTF.findTradingZone(self.direction)
+                TradingZone = HTF.HTFfindTradingZone(self.direction)
                 
                 if TradingZone:
                     logging.info("\t+ Found Trading Zone ")
@@ -490,7 +457,7 @@ class Engine():
                 else:
                     logging.info("\t+ No Trading Zone found..")
 
-                OpposingZone = HTF.findOpposingZone(self.direction)
+                OpposingZone = HTF.HTFfindOpposingZone(self.direction)
                 
                 if OpposingZone: # If we find Opposing Zone
                     logging.info("\t+ Found Opposing Zone ")
