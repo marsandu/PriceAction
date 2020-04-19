@@ -171,6 +171,7 @@ class Area():
                             if self.clist[i+3].bodywithgap2r >= float(self.params['liDZr']):
                                 ZoneTop = self.clist[i+2].open
                                 ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low)
+                                pattern_end = 3
                                 break
 
                             elif self.clist[i+3].b2r <= float(self.params['bDZr']):
@@ -179,6 +180,7 @@ class Area():
                                 if self.clist[i+4].bodywithgap2r >= float(self.params['liDZr']):
                                     ZoneTop = max(self.clist[i+2].open, self.clist[i+3].open)
                                     ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low, self.clist[i+3].low)
+                                    pattern_end = 4
                                     break
 
                                 elif self.clist[i+4].b2r <= float(self.params['bDZr']):
@@ -187,6 +189,7 @@ class Area():
                                     if self.clist[i+5].bodywithgap2r >= float(self.params['liDZr']):
                                         ZoneTop = max(self.clist[i+2].open, self.clist[i+3].open, self.clist[i+4].open)
                                         ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low, self.clist[i+3].low, self.clist[i+4].low)
+                                        pattern_end = 5
                                         break
                                     else:
                                         continue
@@ -224,6 +227,7 @@ class Area():
                             if self.clist[i+3].bodywithgap2r >= float(self.params['liSZr']):
                                 ZoneBot = self.clist[i+2].close
                                 ZoneTop = max(self.clist[i+1].high, self.clist[i+2].high)
+                                pattern_end = 3
                                 break
 
                             elif self.clist[i+3].b2r <= float(self.params['bSZr']):
@@ -232,6 +236,7 @@ class Area():
                                 if self.clist[i+4].bodywithgap2r >= float(self.params['liSZr']):
                                     ZoneBot = min(self.clist[i+2].close, self.clist[i+3].close)
                                     ZoneTop = min(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high)
+                                    pattern_end = 4
                                     break
 
                                 elif self.clist[i+4].b2r <= float(self.params['bSZr']):
@@ -240,6 +245,7 @@ class Area():
                                     if self.clist[i+5].bodywithgap2r >= float(self.params['liSZr']):
                                         ZoneBot = min(self.clist[i+2].close, self.clist[i+3].close, self.clist[i+4].close)
                                         ZoneTop = min(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high, self.clist[i+4].high)
+                                        pattern_end = 5
                                         break
                                     else:
                                         continue
