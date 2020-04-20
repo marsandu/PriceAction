@@ -132,8 +132,8 @@ class Area():
         bodies = []
         for cl in self.clist:
             bodies.append(cl.body)
-        bodies.sort()
-        
+        bodies.sort(reverse=True)
+
         return bodies[X-1]
 
 
@@ -151,6 +151,7 @@ class Area():
 
             # STEP 1
             if direction == 'Long':
+                
                 if self.clist[i+1].open < self.lowNow and self.clist[i+1].open < Lowest and self.clist[i+1].color == 'green' and self.clist[i+1].body >= self.topX(int(self.params['loX'])):
                     # Debug
                     #print("-----")
@@ -287,19 +288,25 @@ class Area():
 
     def LTFfindTradingZone(self, direction):
         
-        result = self.scanCircle(direction, 0)
-        #print(x[5])
-        if result != None:
-            result2 = self.scanCircle(direction, result[5])
-            result = result[:-1] 
+        if direction == 'Long':
+            ## ITS TWO MAKE MULTIPLE
+            result = self.scanCircle(direction, 0)
+            #print(x[5])
+            if result != None:
+                result2 = self.scanCircle(direction, result[5])
+                result = result[:-1] 
 
-            if result2 != None:
-                result2 = result2[:-1]
-                #print("ONE AND TWO ", result + result2)
-                return result + result2
-            else:
-                #print("JUST ONE ", result)
-                return result
+                if result2 != None:
+                    result2 = result2[:-1]
+                    #print("ONE AND TWO ", result + result2)
+                    return result + result2
+                else:
+                    #print("JUST ONE ", result)
+                    return result
+            ## ITS TWO MAKE MULTIPLE
+        else:
+            result = self.scanCircle(direction, 0)
+            return result[:-1]
 
 
     def LTFfindOpposingZone(self, direction):
@@ -307,20 +314,26 @@ class Area():
         if direction == 'Long': direction = 'Short'
         elif direction == 'Short': direction  = 'Long'
 
-        result = self.scanCircle(direction, 0)
-        #print(x[5])
-        if result != None:
-            result2 = self.scanCircle(direction, result[5])
-            result = result[:-1] 
+        if direction == 'Long':
+            ## ITS TWO MAKE MULTIPLE
+            result = self.scanCircle(direction, 0)
+            #print(x[5])
+            if result != None:
+                result2 = self.scanCircle(direction, result[5])
+                result = result[:-1] 
 
-            if result2 != None:
-                result2 = result2[:-1]
-                print("ONE AND TWO ", result + result2)
-                return result + result2
-            else:
-                print("JUST ONE ", result)
-                return result
-        
+                if result2 != None:
+                    result2 = result2[:-1]
+                    print("ONE AND TWO ", result + result2)
+                    return result + result2
+                else:
+                    print("JUST ONE ", result)
+                    return result
+            ## ITS TWO MAKE MULTIPLE
+        else:
+            result = self.scanCircle(direction, 0)
+            return result[:-1]
+
 
     def findAT(self, direction):
         Highest = self.highNow
@@ -547,7 +560,8 @@ class Engine():
                                 if i == 1:
                                     logging.info("Current price is Very Low on the curve.  Score = 2")
                                     score = 2
-                                elif i == 2:
+                                    break
+                                if i == 2:
                                     logging.info("Current price is Low on the curve. Score = 1")
                                     score = 1
                     elif DZTop and ATH: # If Opposing Zone is ATH/ATL
@@ -562,12 +576,13 @@ class Engine():
                         for i in range(1,6):
                             curve[i] = (i*(SZBot - DZTop)/5) + DZTop
 
-                        for i in range(1,6):
+                        for i in range(5,0,-1):
                             if Now < curve[i]:
                                 if i == 5:
                                     logging.info("Current price is Very High on the curve.  Score = 2")
                                     score = 2
-                                elif i == 4:
+                                    break
+                                if i == 4:
                                     logging.info("Current price is High on the curve. Score = 1")
                                     score = 1
 
