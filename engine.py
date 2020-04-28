@@ -8,6 +8,7 @@ import pandas           as      pd
 import numpy            as      np
 import traceback, re
 import time
+import json
 
 TIME_FRAMES = [
     'Hourly'    , 
@@ -95,7 +96,7 @@ class Area():
     def __init__(self, clist, params, logging):
 
         self.logging = logging
-        self.params = params
+        self.params  = params
         self.lowNow  = clist[0].low
         self.highNow = clist[0].high
         self.clist   = clist
@@ -131,7 +132,7 @@ class Area():
     def topX(self, X):
         bodies = []
         for cl in self.clist:
-            bodies.append(cl.body)
+            bodies.append(cl.bodywithgap)
         bodies.sort(reverse=True)
 
         return bodies[X-1]
@@ -139,9 +140,10 @@ class Area():
 
     def scanCircle(self, direction, start):
 
-        Now = self.clist[0]
-        Lowest = self.lowNow
+        Now     = self.clist[0]
+        Lowest  = self.lowNow
         Highest = self.highNow
+        score   = 0
 
         for i in range(start, len(self.clist)-1):
 
@@ -151,8 +153,14 @@ class Area():
 
             # STEP 1
             if direction == 'Long':
-                
-                if self.clist[i+1].open < self.lowNow and self.clist[i+1].open < Lowest and self.clist[i+1].color == 'green' and self.clist[i+1].body >= self.topX(int(self.params['loX'])):
+                #print(self.clist[i+1].date)
+                #print("Lowest: ", Lowest)
+                #print("Open + Gap: ", self.clist[i+1].open + self.clist[i+1].SZgap)
+                #print("Body: ", self.clist[i+1].body)
+                #print("BodywithGap: ", self.clist[i+1].bodywithgap)
+                #print("Top X: ", self.topX(int(self.params['loX'])))
+                #print("Color: ", self.clist[i+1].color)
+                if self.clist[i+1].open + self.clist[i+1].DZgap < Lowest and self.clist[i+1].color == 'green' and self.clist[i+1].bodywithgap >= self.topX(int(self.params['loX'])):
                     # Debug
                     #print("-----")
                     #print(float(self.params['loDZr']))
@@ -166,14 +174,30 @@ class Area():
                     # if its a leg-out indeed proceed
                     if self.clist[i+1].bodywithgap2r  >= float(self.params['loDZr']):
                         
+                        # Score Leg-out Candle
+                        if self.topX(2) == self.clist[i+1].bodywithgap or self.topX(1) == self.clist[i+1].bodywithgap:
+                            score = score + 3
+                        elif self.topX(3) == self.clist[i+1].bodywithgap or self.topX(4) == self.clist[i+1].bodywithgap:
+                            score = score + 1
+
                         # STEP 2
                         if self.clist[i+2].b2r <= float(self.params['bDZr']):
                             
+                            # LTF Gap Scoring RULE 4
+                            if self.clist[i+1].DZgap:
+                                if self.clist[i+1].open > self.clist[i+2].high:
+                                    score = score + 1
+                                else:
+                                    if self.clist[i+1].open > self.clist[i+2].close:
+                                        score = score + 2
+
                             # STEP 3
                             if self.clist[i+3].bodywithgap2r >= float(self.params['liDZr']):
                                 ZoneTop = self.clist[i+2].open
                                 ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low)
                                 pattern_end = 3
+                                # 1 Basing Candle - Increase score by 2
+                                score = score + 2
                                 break
 
                             elif self.clist[i+3].b2r <= float(self.params['bDZr']):
@@ -183,6 +207,8 @@ class Area():
                                     ZoneTop = max(self.clist[i+2].open, self.clist[i+3].open)
                                     ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low, self.clist[i+3].low)
                                     pattern_end = 4
+                                    # 2 Basing Candles - Increase score by 1
+                                    score = score + 1
                                     break
 
                                 elif self.clist[i+4].b2r <= float(self.params['bDZr']):
@@ -192,6 +218,8 @@ class Area():
                                         ZoneTop = max(self.clist[i+2].open, self.clist[i+3].open, self.clist[i+4].open)
                                         ZoneBot = min(self.clist[i+1].low, self.clist[i+2].low, self.clist[i+3].low, self.clist[i+4].low)
                                         pattern_end = 5
+                                        # 3 Basing Candles - Increase score by 0.5
+                                        score = score + 0.5
                                         break
                                     else:
                                         continue
@@ -208,11 +236,20 @@ class Area():
 
 
             elif direction == 'Short':
-                if self.clist[i+1].open > self.highNow and self.clist[i+1].open > Highest and self.clist[i+1].color == 'red' and self.clist[i+1].body >= self.topX(int(self.params['loX'])):
+
+                #print(self.clist[i+1].date)
+                #print("Highest: ", Highest)
+                #print("Open + Gap: ", self.clist[i+1].open + self.clist[i+1].SZgap)
+                #print("Body: ", self.clist[i+1].body)
+                #print("BodywithGap: ", self.clist[i+1].bodywithgap)
+                #print("Top X: ", self.topX(int(self.params['loX'])))
+                #print("Color: ", self.clist[i+1].color)
+                if self.clist[i+1].open + self.clist[i+1].SZgap > Highest and self.clist[i+1].color == 'red' and self.clist[i+1].bodywithgap >= self.topX(int(self.params['loX'])):
+                    #print("HEEEEEELO")
                     # Debug
                     #print("-----")
                     #print(float(self.params['loSZr']))
-                    #print("Bratio: ", self.clist[i+1].b2r)
+                    #print("Bodywithgapratio: ", self.clist[i+1].bodywithgap2r)
                     #print(self.clist[i+1].date)
                     #print("Highest: ", Highest)
                     #print("Open: ", self.clist[i+1].open)
@@ -222,14 +259,30 @@ class Area():
                     # if its a leg-out indeed proceed
                     if self.clist[i+1].bodywithgap2r  >= float(self.params['loSZr']):
                         
+                        # Score Leg-out Candle
+                        if self.topX(2) == self.clist[i+1].bodywithgap or self.topX(1) == self.clist[i+1].bodywithgap:
+                            score = score + 3
+                        elif self.topX(3) == self.clist[i+1].bodywithgap or self.topX(4) == self.clist[i+1].bodywithgap:
+                            score = score + 1
+
                         # STEP 2
                         if self.clist[i+2].b2r <= float(self.params['bSZr']):
+                            
+                            # LTF Gap Scoring RULE 4
+                            if self.clist[i+1].SZgap:
+                                if self.clist[i+1].open < self.clist[i+2].low:
+                                    score = score + 1
+                                else:
+                                    if self.clist[i+1].open < self.clist[i+2].close:
+                                        score = score + 0.5
 
                             # STEP 3
                             if self.clist[i+3].bodywithgap2r >= float(self.params['liSZr']):
                                 ZoneBot = self.clist[i+2].close
                                 ZoneTop = max(self.clist[i+1].high, self.clist[i+2].high)
                                 pattern_end = 3
+                                # 1 Basing Candle - Increase score by 2
+                                score = score + 2
                                 break
 
                             elif self.clist[i+3].b2r <= float(self.params['bSZr']):
@@ -239,6 +292,8 @@ class Area():
                                     ZoneBot = min(self.clist[i+2].close, self.clist[i+3].close)
                                     ZoneTop = min(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high)
                                     pattern_end = 4
+                                    # 2 Basing Candles - Increase score by 1
+                                    score = score + 1
                                     break
 
                                 elif self.clist[i+4].b2r <= float(self.params['bSZr']):
@@ -248,6 +303,8 @@ class Area():
                                         ZoneBot = min(self.clist[i+2].close, self.clist[i+3].close, self.clist[i+4].close)
                                         ZoneTop = min(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high, self.clist[i+4].high)
                                         pattern_end = 5
+                                        # 3 Basing Candles - Increase score by 0.5
+                                        score = score + 0.5
                                         break
                                     else:
                                         continue
@@ -264,7 +321,7 @@ class Area():
 
         try:
             if ZoneBot and ZoneTop:
-                return self.clist[i+1].date, self.clist[i+pattern_end].date, ZoneBot, ZoneTop, Now.close, i+pattern_end
+                return self.clist[i+1].date, self.clist[i+pattern_end].date, ZoneBot, ZoneTop, Now.close, score, i+pattern_end
         except:
             return None
 
@@ -274,65 +331,36 @@ class Area():
         result = self.scanCircle(direction, 0)
         if result != None:
             return result[:-1]
-
+        else:
+            return None
 
     def HTFfindOpposingZone(self, direction):
-
         if direction == 'Long': direction = 'Short'
         elif direction == 'Short': direction  = 'Long'
 
         result = self.scanCircle(direction, 0)
         if result != None:
             return result[:-1]
-
-
-    def LTFfindTradingZone(self, direction):
-        
-        if direction == 'Long':
-            ## ITS TWO MAKE MULTIPLE
-            result = self.scanCircle(direction, 0)
-            #print(x[5])
-            if result != None:
-                result2 = self.scanCircle(direction, result[5])
-                result = result[:-1] 
-
-                if result2 != None:
-                    result2 = result2[:-1]
-                    #print("ONE AND TWO ", result + result2)
-                    return result + result2
-                else:
-                    #print("JUST ONE ", result)
-                    return result
-            ## ITS TWO MAKE MULTIPLE
         else:
-            result = self.scanCircle(direction, 0)
-            return result[:-1]
+            return None
 
+    def LTFfindTradingZone(self, direction, startFrom):
+        
+        result = self.scanCircle(direction, startFrom)
+        if result != None:
+            return result
+        else:
+            return None
 
     def LTFfindOpposingZone(self, direction):
-
         if direction == 'Long': direction = 'Short'
         elif direction == 'Short': direction  = 'Long'
 
-        if direction == 'Long':
-            ## ITS TWO MAKE MULTIPLE
-            result = self.scanCircle(direction, 0)
-            #print(x[5])
-            if result != None:
-                result2 = self.scanCircle(direction, result[5])
-                result = result[:-1] 
-
-                if result2 != None:
-                    result2 = result2[:-1]
-                    print("ONE AND TWO ", result + result2)
-                    return result + result2
-                else:
-                    print("JUST ONE ", result)
-                    return result
-            ## ITS TWO MAKE MULTIPLE
-        else:
-            result = self.scanCircle(direction, 0)
+        result = self.scanCircle(direction, 0)
+        if result != None:
             return result[:-1]
+        else:
+            return None
 
 
     def findAT(self, direction):
@@ -467,9 +495,14 @@ class Engine():
 
 
     def run (self):
+        result = {}
         results = {}
+        result['Trade Direction'] = self.direction
+        result['High Time Frame'] = self.time_frame
+        result['Ticker'] = self.ticker
         clist = []
-        if self.ticker != '': # If we have supplied a ticket use it
+
+        if self.ticker != '': # If we have supplied a ticker use it
             pairs = [self.ticker]    
         else                : # Or do for all tickers in config.json
             pairs = sltm.g_config()['pairs']
@@ -478,11 +511,15 @@ class Engine():
         
         try:
             for pair in pairs: # for each ticker in list pairs
-                logging.info({'Parsing DataFrame': pair})
+                
+                AT_HL = False
+                HTFscore = 0
+
+                logging.info({'HTF Parsing DataFrame HTF': pair})
 
                 # Get Data from CSV or DB
                 try:
-                    df = parseCSV(str(self.ticker) + '.csv')
+                    df = parseCSV(str(self.ticker) + '_HTF.csv')
                 except FileNotFoundError as e:
                     logging.info('Could not load data.')
                     logging.info('File {} was not found in current directory, exiting..'.format(self.ticker + '.csv'))
@@ -508,97 +545,216 @@ class Engine():
                     logging.info("\t+ Found Trading Zone ")
                     if self.direction == 'Long':
                         logging.info("\t+ Demand Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
-                        DZTop = TradingZone[3]
-                        Now = TradingZone[4]
+                        TDZTop = TradingZone[3]
+                        # Higher Frame Demand Zone TOP BOTTOM
+                        HTFDZBOT = TradingZone[2]
+                        HTFDZTOP = TradingZone[3]
+                        Now    = TradingZone[4]
                     elif self.direction == 'Short':
                         logging.info("\t+ Supply Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
-                        SZBot = TradingZone[2]
-                        Now = TradingZone[4]
+                        TSZBot = TradingZone[2]
+                        # Higher Frame Supply Zone TOP BOTTOM
+                        HTFSZBOT = TradingZone[2]
+                        HTFSZTOP = TradingZone[3]
+                        Now    = TradingZone[4]
                 else:
                     logging.info("\t+ No Trading Zone found..")
 
+                result['Last Closing Price'] = Now
                 OpposingZone = HTF.HTFfindOpposingZone(self.direction)
                 
                 if OpposingZone: # If we find Opposing Zone
                     logging.info("\t+ Found Opposing Zone ")
                     if self.direction == 'Long':
                         logging.info("\t+ Supply Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
-                        SZBot = OpposingZone[2]
-                        Now = TradingZone[4]
+                        OSZBot = OpposingZone[2]
+                        Now    = TradingZone[4]
                     elif self.direction == 'Short':
                         logging.info("\t+ Demand Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
-                        DZTop = OpposingZone[3]
-                        Now = TradingZone[4]
+                        ODZTop = OpposingZone[3]
+                        Now    = TradingZone[4]
                 else: # If we dont find Opposing Zone look for ATH/ATL
                     logging.info(" No Opposing Zone found.")
                     logging.info("\t+ Now scanning for All-time High/Low..")
                     if self.direction == 'Long':
-                        SZBot = None
-                        ATH = HTF.findAT(self.direction) # SZBot
-                        logging.info("\t+ Found all-time High " + str(ATH))
+                        OSZBot = HTF.findAT(self.direction) # SZBot
+                        logging.info("\t+ Found all-time High " + str(OSZBot))
+                        AT_HL  = True
 
                     elif self.direction == 'Short':
-                        DZTop = None
-                        ATL = HTF.findAT(self.direction) # DZTop
-                        logging.info("\t+ Found all-time Low " + str(ATL))
+                        OSZTop = HTF.findAT(self.direction) # DZTop
+                        logging.info("\t+ Found all-time Low " + str(OSZTop))
+                        AT_HL  = True
                 ##              ##
                 ##   ## ## ##   ##
-
-                #print(HTF.LTFfindTradingZone('Long'))
 
                 ##  HTF SCORING  ##
                 ##               ##
                 if self.direction == 'Long':
-                    if SZBot and DZTop: # If we have proper Oppossing Zone
-                        ATH = None
+                    if not AT_HL: # If we have proper Oppossing Zone
                         curve = {}
                         for i in range(1,6):
-                            curve[i] = (i*(SZBot - DZTop)/5) + DZTop
+                            curve[i] = (i*(OSZBot - TDZTop)/5) + TDZTop
+                        
+                        if Now < curve[2] and Now > curve[1]:
+                            logging.info("Current price is Very Low on the curve.  Score = 2")
+                            result['Curve Level'] = 'Very Low'
+                            HTFscore = 2
+                        if Now < curve[3] and Now > curve[2]:
+                            logging.info("Current price is Low on the curve. Score = 1")
+                            result['Curve Level'] = 'Low'
+                            HTFscore = 1
 
-                        for i in range(1,6):
-                            if Now < curve[i]:
-                                if i == 1:
-                                    logging.info("Current price is Very Low on the curve.  Score = 2")
-                                    score = 2
-                                    break
-                                if i == 2:
-                                    logging.info("Current price is Low on the curve. Score = 1")
-                                    score = 1
-                    elif DZTop and ATH: # If Opposing Zone is ATH/ATL
-                        score = 0
+                    elif AT_HL: # If Opposing Zone is ATH/ATL
+                        HTFscore = 0
 
-                    logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n   AT Hi     {}".format(Now, SZBot, DZTop, score, ATH))
+                    logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n".format(Now, OSZBot, TDZTop, HTFscore))
 
                 elif self.direction == 'Short':
-                    if SZBot and DZTop: # If we have proper Oppossing Zone
-                        ATL = None
+                    if not AT_HL: # If we have proper Oppossing Zone
                         curve = {}
                         for i in range(1,6):
-                            curve[i] = (i*(SZBot - DZTop)/5) + DZTop
+                            curve[i] = (i*(TSZBot - ODZTop)/5) + ODZTop
 
-                        for i in range(5,0,-1):
-                            if Now < curve[i]:
-                                if i == 5:
-                                    logging.info("Current price is Very High on the curve.  Score = 2")
-                                    score = 2
-                                    break
-                                if i == 4:
-                                    logging.info("Current price is High on the curve. Score = 1")
-                                    score = 1
+                        if Now < curve[5] and Now > curve[4]:
+                            logging.info("Current price is Very High on the curve.  Score = 2")
+                            result['Curve Level'] = 'Very High'
+                            HTFscore = 2
+                        if Now < curve[4] and Now > curve[3]:
+                            logging.info("Current price is High on the curve. Score = 1")
+                            result['Curve Level'] = 'High'
+                            HTFscore = 1
 
-                    elif SZBot and ATL: # If Opposing Zone is ATH/ATL
-                        score = 0
+                    elif AT_HL: # If Opposing Zone is ATH/ATL
+                        HTFscore = 0
 
-                    logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n   AT Lo     {}".format(Now, SZBot, DZTop, score, ATL))
+                    logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n".format(Now, TSZBot, ODZTop, HTFscore))
+
+                ##              ##
+                ##   ## ## ##   ##
+
+                # Dereference all Candles and Ranges with __del__
+                # Go To ITF..
+                # Reset results (except score) to proceed with LTF
+                clist.clear()
+                clist = []
+                logging.info({'LTF Parsing DataFrame LTF': pair})
+                # Get Data from CSV or DB
+                try:
+                    df = parseCSV(str(self.ticker) + '_LTF.csv')
+                except FileNotFoundError as e:
+                    logging.info('Could not load data.')
+                    logging.info('File {} was not found in current directory, exiting..'.format(self.ticker + '.csv'))
+                    exit()
+
+                time.sleep(0.3)
+                logging.info('\t+ DataFrame loaded')
+                time.sleep(0.1)
+
+                for row in df.iterrows():
+                    cl  = Candle(row, self.htf_params)    # Import each row of DF as a new Candle item  
+                    clist.append(cl)    # Add each new Candle to a list
+
+
+                AT_HL = False
+                startFrom = 0   # LTF multiple trading-zone support
+
+                ######## ITF ########
+
+                ##  LTF  SCAN  ##
+                ##             ##
+                LTF = Area(clist, self.ltf_params, logging)
+                logging.info('{} scan LTF..'.format(self.direction))
+
+                while True:
+
+                    FINscore = 0
+                    TradingZone = LTF.LTFfindTradingZone(self.direction, startFrom)
+                
+                    if TradingZone:
+                        startFrom = TradingZone[6]  # Next run begin from previous zone's end
+                        logging.info("\t+ Found Trading Zone ")
+                        if self.direction == 'Long':
+                            logging.info("\t+ Demand Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
+                            TDZTop = TradingZone[3]
+                            TDZBot = TradingZone[2] # TDZBot for RRR
+                            Now    = TradingZone[4]
+                            FINscore  = FINscore + TradingZone[5]
+                            result['Entry Price at LTF Zone'] = TDZTop
+                            result['Date/Time of LO at LTF Zone'] = TradingZone[0]
+                            #logging.info("\n   Price     {}\n   TDZTop     {}\n   Score     {}\n".format(Now, TDZTop, FINscore))
+
+                        elif self.direction == 'Short':
+                            logging.info("\t+ Supply Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
+                            TSZBot = TradingZone[2]
+                            TSZTop = TradingZone[3] # TSZTop for RRR
+                            Now    = TradingZone[4]
+                            FINscore  = FINscore + TradingZone[5]
+                            result['Entry Price at LTF Zone'] = TSZBot
+                            result['Date/Time of LO at LTF Zone'] = TradingZone[0]
+                            #logging.info("\n   Price     {}\n   TSZBot     {}\n   Score     {}\n".format(Now, TSZBot, FINscore))
+
+                        OpposingZone = LTF.LTFfindOpposingZone(self.direction)
+                        
+                        if OpposingZone: # If we find Opposing Zone
+                            logging.info("\t+ Found Opposing Zone ")
+                            if self.direction == 'Long':
+                                logging.info("\t+ Supply Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
+                                OSZBot = OpposingZone[2]
+                                Now    = TradingZone[4]
+                                RRR = (OSZBot - TDZTop) / (TDZTop - TDZBot) # Reward / Risk
+                            elif self.direction == 'Short':
+                                logging.info("\t+ Demand Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
+                                ODZTop = OpposingZone[3]
+                                Now    = TradingZone[4]
+                                RRR = (TSZBot - ODZTop) / (TSZTop - TSZBot) # Reward / Risk
+                        else: # If we dont find Opposing Zone look for ATH/ATL
+                            logging.info(" No Opposing Zone found.")
+                            logging.info("\t+ Now scanning for All-time High/Low..")
+                            if self.direction == 'Long':
+                                OSZBot = HTF.findAT(self.direction) # SZBot
+                                logging.info("\t+ Found all-time High " + str(OSZBot))
+                                AT_HL  = True
+                                RRR = (OSZBot - TDZTop) / (TDZTop - TDZBot) # Reward / Risk
+
+                            elif self.direction == 'Short':
+                                OSZTop = HTF.findAT(self.direction) # DZTop
+                                logging.info("\t+ Found all-time Low " + str(OSZTop))
+                                AT_HL  = True
+                                RRR = (ODZTop - TSZBot) / (TSZTop - TSZBot) # Reward / Risk
+
+                        # Add ZoneOnZone score
+                        if self.direction == 'Long':
+                            if TDZTop < HTFDZTOP and TDZBot > HTFDZBOT:
+                                FINscore = FINscore + 2
+                        elif self.direction == 'Short':
+                            if TSZTop < HTFSZTOP and TSZBot > HTFSZBOT:
+                                FINscore = FINscore + 2 
+
+                        # Add RRR score
+                        if RRR > 3:
+                            FINscore = FINscore + 1
+                        elif score > 2 and score < 3:
+                            FINscore = FINscore + 0.5
+                        result['RRR'] = RRR
+                        # Add HTF score
+                        FINscore = FINscore + HTFscore
+                        result['Score'] = FINscore
+
+                        print (json.dumps(result, indent=4))
+
+                    else:
+                        break
+
 
                 ##              ##
                 ##   ## ## ##   ##
 
 
-                
-
                 # Dereference all Candles and Ranges with __del__
-                # Go To ITF..
+                # Go To LTF..
+
+                
         except KeyboardInterrupt:
             raise(KeyboardInterrupt)
         except Exception as e:
@@ -608,9 +764,6 @@ class Engine():
         
         return results
 
-
-def htf():
-    pass
 
 def itf(
     df                  ,
@@ -627,8 +780,6 @@ def itf(
 
     return df, 1 if score else 0
 
-def ltf():
-    pass
 
 
 
