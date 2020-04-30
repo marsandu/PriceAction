@@ -59,6 +59,8 @@ class Candle():
         self.low      = float(dfRow[1]['Low'])
         self.body     = abs(self.open - self.close)
         self.range    = abs(self.high - self.low)
+        if self.range == 0:
+            self.range = 1
         self.b2r      = self.body / self.range
         #self.volume   = dfRow[1]['Volume']
         self.DZgap    = 0  # DZGap is added ont op of current body
@@ -236,7 +238,6 @@ class Area():
 
 
             elif direction == 'Short':
-
                 #print(self.clist[i+1].date)
                 #print("Highest: ", Highest)
                 #print("Open + Gap: ", self.clist[i+1].open + self.clist[i+1].SZgap)
@@ -542,7 +543,7 @@ class Engine():
                 TradingZone = HTF.HTFfindTradingZone(self.direction)
                 
                 if TradingZone:
-                    logging.info("\t+ Found Trading Zone ")
+                    logging.info("\t+ Trading Zone ")
                     if self.direction == 'Long':
                         logging.info("\t+ Demand Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
                         TDZTop = TradingZone[3]
@@ -564,7 +565,7 @@ class Engine():
                 OpposingZone = HTF.HTFfindOpposingZone(self.direction)
                 
                 if OpposingZone: # If we find Opposing Zone
-                    logging.info("\t+ Found Opposing Zone ")
+                    logging.info("\t+ Opposing Zone ")
                     if self.direction == 'Long':
                         logging.info("\t+ Supply Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
                         OSZBot = OpposingZone[2]
@@ -608,7 +609,7 @@ class Engine():
                     elif AT_HL: # If Opposing Zone is ATH/ATL
                         HTFscore = 0
 
-                    logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n".format(Now, OSZBot, TDZTop, HTFscore))
+                    #logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n".format(Now, OSZBot, TDZTop, HTFscore))
 
                 elif self.direction == 'Short':
                     if not AT_HL: # If we have proper Oppossing Zone
@@ -628,7 +629,7 @@ class Engine():
                     elif AT_HL: # If Opposing Zone is ATH/ATL
                         HTFscore = 0
 
-                    logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n".format(Now, TSZBot, ODZTop, HTFscore))
+                    #logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n".format(Now, TSZBot, ODZTop, HTFscore))
 
                 ##              ##
                 ##   ## ## ##   ##
@@ -667,13 +668,11 @@ class Engine():
                 logging.info('{} scan LTF..'.format(self.direction))
 
                 while True:
-
                     FINscore = 0
                     TradingZone = LTF.LTFfindTradingZone(self.direction, startFrom)
-                
                     if TradingZone:
                         startFrom = TradingZone[6]  # Next run begin from previous zone's end
-                        logging.info("\t+ Found Trading Zone ")
+                        logging.info("\t+ Trading Zone ")
                         if self.direction == 'Long':
                             logging.info("\t+ Demand Zone at  " + TradingZone[0] + ' - ' + TradingZone[1] + '\n')
                             TDZTop = TradingZone[3]
@@ -697,7 +696,7 @@ class Engine():
                         OpposingZone = LTF.LTFfindOpposingZone(self.direction)
                         
                         if OpposingZone: # If we find Opposing Zone
-                            logging.info("\t+ Found Opposing Zone ")
+                            logging.info("\t+ Opposing Zone ")
                             if self.direction == 'Long':
                                 logging.info("\t+ Supply Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
                                 OSZBot = OpposingZone[2]
@@ -709,7 +708,7 @@ class Engine():
                                 Now    = TradingZone[4]
                                 RRR = (TSZBot - ODZTop) / (TSZTop - TSZBot) # Reward / Risk
                         else: # If we dont find Opposing Zone look for ATH/ATL
-                            logging.info(" No Opposing Zone found.")
+                            logging.info("\t+ No Opposing Zone found.")
                             logging.info("\t+ Now scanning for All-time High/Low..")
                             if self.direction == 'Long':
                                 OSZBot = HTF.findAT(self.direction) # SZBot
@@ -744,6 +743,7 @@ class Engine():
                         print (json.dumps(result, indent=4))
 
                     else:
+                        logging.info("\t+ No Trading Zone found.\n")
                         break
 
 
