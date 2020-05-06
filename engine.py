@@ -291,7 +291,7 @@ class Area():
                                 # STEP 4
                                 if self.clist[i+4].bodywithgap2r >= float(self.params['liSZr']):
                                     ZoneBot = min(self.clist[i+2].close, self.clist[i+3].close)
-                                    ZoneTop = min(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high)
+                                    ZoneTop = max(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high)
                                     pattern_end = 4
                                     # 2 Basing Candles - Increase score by 1
                                     score = score + 1
@@ -302,7 +302,7 @@ class Area():
                                     # STEP 5
                                     if self.clist[i+5].bodywithgap2r >= float(self.params['liSZr']):
                                         ZoneBot = min(self.clist[i+2].close, self.clist[i+3].close, self.clist[i+4].close)
-                                        ZoneTop = min(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high, self.clist[i+4].high)
+                                        ZoneTop = max(self.clist[i+1].high, self.clist[i+2].high, self.clist[i+3].high, self.clist[i+4].high)
                                         pattern_end = 5
                                         # 3 Basing Candles - Increase score by 0.5
                                         score = score + 0.5
@@ -706,6 +706,9 @@ class Engine():
                                 logging.info("\t+ Demand Zone at " + OpposingZone[0] + ' - ' + OpposingZone[1] + '\n')
                                 ODZTop = OpposingZone[3]
                                 Now    = TradingZone[4]
+                                #print("Here TradingZone SupplyZone Bot = ", TSZBot)
+                                #print("Here TradingZone SupplyZone Top = ", TSZTop)
+                                #print("Here OpposinZone DemandZone Top = ", ODZTop)
                                 RRR = (TSZBot - ODZTop) / (TSZTop - TSZBot) # Reward / Risk
                         else: # If we dont find Opposing Zone look for ATH/ATL
                             logging.info("\t+ No Opposing Zone found.")
@@ -733,7 +736,7 @@ class Engine():
                         # Add RRR score
                         if RRR > 3:
                             FINscore = FINscore + 1
-                        elif score > 2 and score < 3:
+                        elif RRR > 2 and RRR < 3:
                             FINscore = FINscore + 0.5
                         result['RRR'] = RRR
                         # Add HTF score
@@ -743,7 +746,7 @@ class Engine():
                         print (json.dumps(result, indent=4))
 
                     else:
-                        logging.info("\t+ No Trading Zone found.\n")
+                        #logging.info("\t+ No Trading Zone found.\n")
                         break
 
 
