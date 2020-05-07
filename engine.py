@@ -664,7 +664,7 @@ class Engine():
 
                     if self.direction == 'Long':
 
-                        if self.time_frame == 'Weekly' or self.time_frame == 'Daily':
+                        if self.time_frame == 'Monthly' or self.time_frame == 'Weekly':
                             if df['ema'][0] > df['sma'][0]:
                                 result['ITF Score'] = '5EMA > 20SMA  Score = 1'
                                 ITFscore = 1
@@ -672,7 +672,7 @@ class Engine():
                                 result['ITF Score'] = '5EMA < 20SMA  Score = 0'
                                 ITFscore = 0
 
-                        elif self.time_frame == 'Hourly':
+                        else:
                             if df['Close'][0] > df['sma'][0]:
                                 result['ITF Score'] = 'ClosePrice > 20SMA  Score = 1'
                                 ITFscore = 1
@@ -682,7 +682,7 @@ class Engine():
 
                     elif self.direction == 'Short':
 
-                        if self.time_frame == 'Weekly' or self.time_frame == 'Daily':
+                        if self.time_frame == 'Monthly' or self.time_frame == 'Weekly':
                             if df['ema'][0] < df['sma'][0]:
                                 result['ITF Score'] = '5EMA < 20SMA  Score = 1'
                                 ITFscore = 1
@@ -690,7 +690,7 @@ class Engine():
                                 result['ITF Score'] = '5EMA > 20SMA  Score = 0'
                                 ITFscore = 0
 
-                        elif self.time_frame == 'Hourly':
+                        else:
                             if df['Close'][0] < df['sma'][0]:
                                 result['ITF Score'] = 'ClosePrice < 20SMA  Score = 1'
                                 ITFscore = 1      
