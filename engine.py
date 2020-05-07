@@ -603,42 +603,37 @@ class Engine():
                 ##  HTF SCORING  ##
                 ##               ##
                 if self.direction == 'Long':
-                    if not AT_HL: # If we have proper Oppossing Zone
-                        curve = {}
-                        for i in range(1,6):
-                            curve[i] = (i*(OSZBot - TDZTop)/5) + TDZTop
-                        
-                        if Now < curve[2] and Now > curve[1]:
-                            logging.info("Current price is Very Low on the curve.  Score = 2")
-                            result['Curve Level'] = 'Very Low'
-                            HTFscore = 2
-                        if Now < curve[3] and Now > curve[2]:
-                            logging.info("Current price is Low on the curve. Score = 1")
-                            result['Curve Level'] = 'Low'
-                            HTFscore = 1
-
-                    elif AT_HL: # If Opposing Zone is ATH/ATL
-                        HTFscore = 0
-
+                    curve = {}
+                    for i in range(1,6):
+                        curve[i] = (i*(OSZBot - TDZTop)/5) + TDZTop
+                    
+                    if Now < curve[2] and Now > curve[1]:
+                        logging.info("Current price is Very Low on the curve.  Score = 2")
+                        result['Curve Level'] = 'Very Low'
+                        HTFscore = 2
+                    elif Now < curve[3] and Now > curve[2]:
+                        logging.info("Current price is Low on the curve. Score = 1")
+                        result['Curve Level'] = 'Low'
+                        HTFscore = 1
+                    else:
+                        result['Curve Level'] = 'High/Very High Score 0'
                     #logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n".format(Now, OSZBot, TDZTop, HTFscore))
 
                 elif self.direction == 'Short':
-                    if not AT_HL: # If we have proper Oppossing Zone
-                        curve = {}
-                        for i in range(1,6):
-                            curve[i] = (i*(TSZBot - ODZTop)/5) + ODZTop
+                    curve = {}
+                    for i in range(1,6):
+                        curve[i] = (i*(TSZBot - ODZTop)/5) + ODZTop
 
-                        if Now < curve[5] and Now > curve[4]:
-                            logging.info("Current price is Very High on the curve.  Score = 2")
-                            result['Curve Level'] = 'Very High'
-                            HTFscore = 2
-                        if Now < curve[4] and Now > curve[3]:
-                            logging.info("Current price is High on the curve. Score = 1")
-                            result['Curve Level'] = 'High'
-                            HTFscore = 1
-
-                    elif AT_HL: # If Opposing Zone is ATH/ATL
-                        HTFscore = 0
+                    if Now < curve[5] and Now > curve[4]:
+                        logging.info("Current price is Very High on the curve.  Score = 2")
+                        result['Curve Level'] = 'Very High'
+                        HTFscore = 2
+                    elif Now < curve[4] and Now > curve[3]:
+                        logging.info("Current price is High on the curve. Score = 1")
+                        result['Curve Level'] = 'High'
+                        HTFscore = 1
+                    else:
+                        result['Curve Level'] = 'Low/Very Low Score 0'
                 ##              ##
                 ##   ## ## ##   ##
 
@@ -665,11 +660,9 @@ class Engine():
                     df['sma']   = df['Close'].rolling(20).mean()
                     df['ema']   = df['Close'].ewm(5).mean()
 
-                    print(self.time_frame)
                     if self.direction == 'Long':
 
                         if self.time_frame == 'Weekly' or self.time_frame == 'Daily':
-                            print(df['Close'][0])
                             if df['ema'][0] > df['sma'][0]:
                                 result['ITF Score'] = '5EMA > 20SMA  Score = 1'
                                 ITFscore = 1
@@ -688,7 +681,6 @@ class Engine():
                     elif self.direction == 'Short':
 
                         if self.time_frame == 'Weekly' or self.time_frame == 'Daily':
-                            print(df['Close'][0])
                             if df['ema'][0] < df['sma'][0]:
                                 result['ITF Score'] = '5EMA < 20SMA  Score = 1'
                                 ITFscore = 1
