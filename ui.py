@@ -325,6 +325,9 @@ class App(QWidget):
             ('legout_lh_l'          , QLabel('FX00-Legout must be Lowest/Hightest')  ),
             ('legout_lh'            , QCheckBox()                       ),
 
+            ('enable_itf_l'         , QLabel('Enable ITF')              ),
+            ('enable_itf'           , QCheckBox()                       ),
+
             ('save_config'          , QPushButton('Save config')        ),
             ('run'                  , QPushButton('Run')                ),
             ('run_once'             , QPushButton('Run Once')           ),

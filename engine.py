@@ -102,7 +102,9 @@ class Area():
         self.lowNow  = clist[0].low
         self.highNow = clist[0].high
         self.clist   = clist
-
+        self.LOrank  = '5th +'
+        self.Basings = 0
+        self.LOgap   = False
         # Iterate all candles and find the Gaps
         for i in range(0, len(clist)):
             
@@ -179,8 +181,10 @@ class Area():
                         # Score Leg-out Candle
                         if self.topX(2) == self.clist[i+1].bodywithgap or self.topX(1) == self.clist[i+1].bodywithgap:
                             score = score + 3
+                            self.LOrank = '1st or 2nd'
                         elif self.topX(3) == self.clist[i+1].bodywithgap or self.topX(4) == self.clist[i+1].bodywithgap:
                             score = score + 1
+                            self.LOrank = '3rd or 4th'
 
                         # STEP 2
                         if self.clist[i+2].b2r <= float(self.params['bDZr']):
@@ -189,9 +193,11 @@ class Area():
                             if self.clist[i+1].DZgap:
                                 if self.clist[i+1].open > self.clist[i+2].high:
                                     score = score + 1
+                                    self.LOgap = True
                                 else:
                                     if self.clist[i+1].open > self.clist[i+2].close:
                                         score = score + 2
+                                        self.LOgap = True
 
                             # STEP 3
                             if self.clist[i+3].bodywithgap2r >= float(self.params['liDZr']):
@@ -263,8 +269,10 @@ class Area():
                         # Score Leg-out Candle
                         if self.topX(2) == self.clist[i+1].bodywithgap or self.topX(1) == self.clist[i+1].bodywithgap:
                             score = score + 3
+                            self.LOrank = '1st or 2nd'
                         elif self.topX(3) == self.clist[i+1].bodywithgap or self.topX(4) == self.clist[i+1].bodywithgap:
                             score = score + 1
+                            self.LOrank = '3rd or 4th'
 
                         # STEP 2
                         if self.clist[i+2].b2r <= float(self.params['bSZr']):
@@ -273,9 +281,11 @@ class Area():
                             if self.clist[i+1].SZgap:
                                 if self.clist[i+1].open < self.clist[i+2].low:
                                     score = score + 1
+                                    self.LOgap = True
                                 else:
                                     if self.clist[i+1].open < self.clist[i+2].close:
                                         score = score + 0.5
+                                        self.LOgap = True
 
                             # STEP 3
                             if self.clist[i+3].bodywithgap2r >= float(self.params['liSZr']):
@@ -322,6 +332,7 @@ class Area():
 
         try:
             if ZoneBot and ZoneTop:
+                self.Basings = pattern_end - 2 
                 return self.clist[i+1].date, self.clist[i+pattern_end].date, ZoneBot, ZoneTop, Now.close, score, i+pattern_end
         except:
             return None
@@ -487,7 +498,7 @@ class Engine():
         self.frequency        = kwargs['frequency']
         self.execution_time   = kwargs['execution_time']
         self.legout_lh        = kwargs['legout_lh']
-        
+        self.checkitf         = kwargs['enable_itf']
         # Debug
         #for k in kwargs:
             #print(k)
@@ -515,7 +526,7 @@ class Engine():
                 
                 AT_HL = False
                 HTFscore = 0
-
+                ITFscore = 0
                 logging.info({'HTF Parsing DataFrame HTF': pair})
 
                 # Get Data from CSV or DB
@@ -628,14 +639,71 @@ class Engine():
 
                     elif AT_HL: # If Opposing Zone is ATH/ATL
                         HTFscore = 0
-
-                    #logging.info("\n   Price     {}\n   SZBot     {}\n   DZTop     {}\n   Score     {}\n".format(Now, TSZBot, ODZTop, HTFscore))
-
                 ##              ##
                 ##   ## ## ##   ##
 
-                # Dereference all Candles and Ranges with __del__
-                # Go To ITF..
+                
+                ######## ITF ########
+                # If checkbox is enabled do ITF
+                if self.checkitf:
+                    # Reset results (except score) to proceed with ITF
+                    clist.clear()
+                    clist = []
+                    logging.info({'ITF Parsing DataFrame ITF': pair})
+                    # Get Data from CSV or DB
+                    try:
+                        df = parseCSV(str(self.ticker) + '_ITF.csv')
+                    except FileNotFoundError as e:
+                        logging.info('Could not load data.')
+                        logging.info('File {} was not found in current directory, exiting..'.format(self.ticker + '_ITF.csv'))
+                        exit()
+
+                    time.sleep(0.3)
+                    logging.info('\t+ DataFrame loaded')
+                    time.sleep(0.1)
+                    # Calculate SMA EMA
+                    df['sma']   = df['Close'].rolling(20).mean()
+                    df['ema']   = df['Close'].ewm(5).mean()
+
+                    print(self.time_frame)
+                    if self.direction == 'Long':
+
+                        if self.time_frame == 'Weekly' or self.time_frame == 'Daily':
+                            print(df['Close'][0])
+                            if df['ema'][0] > df['sma'][0]:
+                                result['ITF Score'] = '5EMA > 20SMA  Score = 1'
+                                ITFscore = 1
+                            else:
+                                result['ITF Score'] = '5EMA < 20SMA  Score = 0'
+                                ITFscore = 0
+
+                        elif self.time_frame == 'Hourly':
+                            if df['Close'][0] > df['sma'][0]:
+                                result['ITF Score'] = 'ClosePrice > 20SMA  Score = 1'
+                                ITFscore = 1
+                            else:
+                                result['ITF Score'] = 'ClosePrice < 20SMA  Score = 0'
+                                ITFscore = 0
+
+                    elif self.direction == 'Short':
+
+                        if self.time_frame == 'Weekly' or self.time_frame == 'Daily':
+                            print(df['Close'][0])
+                            if df['ema'][0] < df['sma'][0]:
+                                result['ITF Score'] = '5EMA < 20SMA  Score = 1'
+                                ITFscore = 1
+                            else:
+                                result['ITF Score'] = '5EMA > 20SMA  Score = 0'
+                                ITFscore = 0
+
+                        elif self.time_frame == 'Hourly':
+                            if df['Close'][0] < df['sma'][0]:
+                                result['ITF Score'] = 'ClosePrice < 20SMA  Score = 1'
+                                ITFscore = 1      
+                            else:
+                                result['ITF Score'] = 'ClosePrice > 20SMA  Score = 0'
+                                ITFscore = 0
+
                 # Reset results (except score) to proceed with LTF
                 clist.clear()
                 clist = []
@@ -656,11 +724,8 @@ class Engine():
                     cl  = Candle(row, self.htf_params)    # Import each row of DF as a new Candle item  
                     clist.append(cl)    # Add each new Candle to a list
 
-
                 AT_HL = False
                 startFrom = 0   # LTF multiple trading-zone support
-
-                ######## ITF ########
 
                 ##  LTF  SCAN  ##
                 ##             ##
@@ -669,6 +734,7 @@ class Engine():
 
                 while True:
                     FINscore = 0
+                    result['Zone Overlap'] = False
                     TradingZone = LTF.LTFfindTradingZone(self.direction, startFrom)
                     if TradingZone:
                         startFrom = TradingZone[6]  # Next run begin from previous zone's end
@@ -729,9 +795,11 @@ class Engine():
                         if self.direction == 'Long':
                             if TDZTop < HTFDZTOP and TDZBot > HTFDZBOT:
                                 FINscore = FINscore + 2
+                                result['Zone Overlap'] = True
                         elif self.direction == 'Short':
                             if TSZTop < HTFSZTOP and TSZBot > HTFSZBOT:
                                 FINscore = FINscore + 2 
+                                result['Zone Overlap'] = True
 
                         # Add RRR score
                         if RRR > 3:
@@ -740,9 +808,11 @@ class Engine():
                             FINscore = FINscore + 0.5
                         result['RRR'] = RRR
                         # Add HTF score
-                        FINscore = FINscore + HTFscore
+                        FINscore = FINscore + HTFscore + ITFscore
                         result['Score'] = FINscore
-
+                        result['Leg Out Gap'] = LTF.LOgap
+                        result['# of base Candles'] = LTF.Basings
+                        result['Leg out Rank'] = LTF.LOrank
                         print (json.dumps(result, indent=4))
 
                     else:
