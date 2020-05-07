@@ -571,6 +571,8 @@ class Engine():
                         Now    = TradingZone[4]
                 else:
                     logging.info("\t+ No Trading Zone found..")
+                    logging.info("\t+ Exiting..")
+                    return results
 
                 
                 OpposingZone = HTF.HTFfindOpposingZone(self.direction)
