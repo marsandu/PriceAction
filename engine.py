@@ -569,10 +569,14 @@ class Engine():
                         HTFSZBOT = TradingZone[2]
                         HTFSZTOP = TradingZone[3]
                         Now    = TradingZone[4]
+
+                    result['Last Closing Price'] = Now
                 else:
                     logging.info("\t+ No Trading Zone found..")
+                    logging.info("\t+ Exiting..")
+                    return results
 
-                result['Last Closing Price'] = Now
+                
                 OpposingZone = HTF.HTFfindOpposingZone(self.direction)
                 
                 if OpposingZone: # If we find Opposing Zone
